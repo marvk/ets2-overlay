@@ -1,0 +1,18 @@
+.container {
+    -fx-background-color: transparent;
+}
+
+.button {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-background-radius: 5;
+    -fx-background-insets: 0;
+}
+
+.button:hover {
+    -fx-background-color: derive(grey, 25%);
+}
+
+.button:pressed {
+    -fx-background-color: derive(grey, 50%);
+}
