@@ -1,11 +1,13 @@
 package net.marvk.ets2overlay
 
 import javafx.application.Platform
+import javafx.beans.binding.Bindings
 import javafx.beans.property.SimpleIntegerProperty
 import javafx.beans.property.SimpleObjectProperty
 import javafx.beans.property.SimpleStringProperty
 import javafx.collections.FXCollections
 import javafx.collections.ListChangeListener
+import javafx.collections.ObservableList
 import javafx.event.ActionEvent
 import javafx.fxml.FXML
 import javafx.geometry.Pos
@@ -13,6 +15,7 @@ import javafx.scene.control.Label
 import javafx.scene.effect.DropShadow
 import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.HBox
+import javafx.scene.layout.StackPane
 import javafx.scene.paint.Color
 import javafx.scene.shape.Circle
 import javafx.scene.text.Font
@@ -52,7 +55,7 @@ private val BINDINGS = listOf(
     ),
     listOf(
         "Overlay aktivieren",
-        "Nächste ansicht",
+        "Nächste Ansicht",
         "Anzeigemodus Armaturenbrett",
         "Anzeigemodus des Infotainment",
         "Zoommodus Navigation",
@@ -85,6 +88,9 @@ private val BINDINGS = listOf(
     ),
 )
 
+private val LAYER_BUTTON_IDS = listOf(8, 9, 10, 12)
+private val ACTION_BUTTON_IDS = listOf(1, 2, 3, 4, 5, 6, 7, 11, 27)
+
 class MainController {
     @FXML
     private lateinit var container: AnchorPane
@@ -94,7 +100,9 @@ class MainController {
 
     private val gamepadEventReader = GamepadEventReader(deviceName = "FANATEC Wheel")
 
-    private val pressedButtons = FXCollections.observableArrayList<Int>()
+    private val pressedLayerButtons: ObservableList<Int> = FXCollections.observableArrayList()
+
+    private val pressedActionButtons: ObservableList<Int> = FXCollections.observableArrayList()
 
     private val layerProperty = SimpleIntegerProperty(0)
 
@@ -107,8 +115,8 @@ class MainController {
     fun initialize() {
         createButtons()
 
-        pressedButtons.addListener(ListChangeListener {
-            val index = when (pressedButtons.lastOrNull()) {
+        pressedLayerButtons.addListener(ListChangeListener {
+            val index = when (pressedLayerButtons.lastOrNull()) {
                 null -> 0
                 12 -> 1
                 8 -> 2
@@ -120,20 +128,20 @@ class MainController {
             layerProperty.value = index
         })
 
-        Thread {
-            listOf(8, 9, 10, 12).forEach { id ->
-                gamepadEventReader.isButtonPressedProperty(id).addListener { _, _, newValue ->
-                    Platform.runLater {
-                        if (newValue) {
-                            pressedButtons.add(id)
-                        } else {
-                            while (pressedButtons.contains(id)) {
-                                pressedButtons.remove(id)
-                            }
-                        }
-                    }
+        pressedActionButtons.addListener(ListChangeListener {
+
+            actionButtons.forEach {
+                it.state = when {
+                    pressedActionButtons.isEmpty() -> ButtonState.BASE
+                    pressedActionButtons.contains(it.identifier) -> ButtonState.ACTIVE
+                    else -> ButtonState.FADED
                 }
             }
+        })
+
+        Thread {
+            createButtonBindings(LAYER_BUTTON_IDS, pressedLayerButtons)
+            createButtonBindings(ACTION_BUTTON_IDS, pressedActionButtons)
 
             gamepadEventReader.isButtonPressedProperty(25).addListener { _, _, pressed ->
                 Platform.runLater {
@@ -150,6 +158,22 @@ class MainController {
         }.apply(Thread::start)
     }
 
+    private fun createButtonBindings(ids: List<Int>, pressedButtons: ObservableList<Int>) {
+        ids.forEach { id ->
+            gamepadEventReader.isButtonPressedProperty(id).addListener { _, _, newValue ->
+                Platform.runLater {
+                    if (newValue) {
+                        pressedButtons.add(id)
+                    } else {
+                        while (pressedButtons.contains(id)) {
+                            pressedButtons.remove(id)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 
     private fun createButtons() {
         val width = container.prefWidth
@@ -163,24 +187,24 @@ class MainController {
 //        add(cx - GROUP_TO_CENTER_OFFSET + GROUP_RADIUS, cy - GROUP_RADIUS, layerButtons[2].apply { textAlignment = TextAlignment.RIGHT; })
 //        add(cx - GROUP_TO_CENTER_OFFSET + GROUP_RADIUS, cy + GROUP_RADIUS, layerButtons[3].apply { textAlignment = TextAlignment.RIGHT; })
 
-        add(actionButtons[0].apply { textAlignment = TextAlignment.LEFT; text = "1" }, cx + GROUP_TO_CENTER_OFFSET - GROUP_RADIUS, cy + GROUP_RADIUS)
-        add(actionButtons[1].apply { textAlignment = TextAlignment.RIGHT; text = "2" }, cx + GROUP_TO_CENTER_OFFSET + GROUP_RADIUS, cy + GROUP_RADIUS)
-        add(actionButtons[2].apply { textAlignment = TextAlignment.RIGHT; text = "3" }, cx + GROUP_TO_CENTER_OFFSET + GROUP_RADIUS, cy - GROUP_RADIUS)
-        add(actionButtons[3].apply { textAlignment = TextAlignment.LEFT; text = "4" }, cx + GROUP_TO_CENTER_OFFSET - GROUP_RADIUS, cy - GROUP_RADIUS)
-        add(actionButtons[4].apply { textAlignment = TextAlignment.RIGHT; text = "4" }, cx + GROUP_TO_CENTER_OFFSET, cy)
-        add(actionButtons[5].apply { textAlignment = TextAlignment.LEFT; text = "6" }, cx + GROUP_TO_CENTER_OFFSET - 3 * GROUP_RADIUS, cy)
-        add(actionButtons[6].apply { textAlignment = TextAlignment.LEFT; text = "7" }, cx + GROUP_TO_CENTER_OFFSET - 3 * GROUP_RADIUS, cy + 2 * GROUP_RADIUS)
-        add(actionButtons[7].apply { textAlignment = TextAlignment.LEFT; text = "8" }, cx - GROUP_TO_CENTER_OFFSET + 5 * GROUP_RADIUS, cy - 2 * GROUP_RADIUS)
-        add(actionButtons[8].apply { textAlignment = TextAlignment.RIGHT; text = "9" }, cx + GROUP_TO_CENTER_OFFSET - 5 * GROUP_RADIUS, cy - 2 * GROUP_RADIUS)
+        add(actionButtons[0].apply { textAlignment = TextAlignment.LEFT; identifier = 1 }, cx + GROUP_TO_CENTER_OFFSET - GROUP_RADIUS, cy + GROUP_RADIUS)
+        add(actionButtons[1].apply { textAlignment = TextAlignment.RIGHT; identifier = 2 }, cx + GROUP_TO_CENTER_OFFSET + GROUP_RADIUS, cy + GROUP_RADIUS)
+        add(actionButtons[2].apply { textAlignment = TextAlignment.RIGHT; identifier = 3 }, cx + GROUP_TO_CENTER_OFFSET + GROUP_RADIUS, cy - GROUP_RADIUS)
+        add(actionButtons[3].apply { textAlignment = TextAlignment.LEFT; identifier = 4 }, cx + GROUP_TO_CENTER_OFFSET - GROUP_RADIUS, cy - GROUP_RADIUS)
+        add(actionButtons[4].apply { textAlignment = TextAlignment.RIGHT; identifier = 27 }, cx + GROUP_TO_CENTER_OFFSET, cy)
+        add(actionButtons[5].apply { textAlignment = TextAlignment.LEFT; identifier = 11 }, cx + GROUP_TO_CENTER_OFFSET - 3 * GROUP_RADIUS, cy)
+        add(actionButtons[6].apply { textAlignment = TextAlignment.LEFT; identifier = 7 }, cx + GROUP_TO_CENTER_OFFSET - 3 * GROUP_RADIUS, cy + 2 * GROUP_RADIUS)
+        add(actionButtons[7].apply { textAlignment = TextAlignment.LEFT; identifier = 6 }, cx - GROUP_TO_CENTER_OFFSET + 5 * GROUP_RADIUS, cy - 2 * GROUP_RADIUS)
+        add(actionButtons[8].apply { textAlignment = TextAlignment.RIGHT; identifier = 5 }, cx + GROUP_TO_CENTER_OFFSET - 5 * GROUP_RADIUS, cy - 2 * GROUP_RADIUS)
 
         layerProperty.addListener { _, _, _ -> updateButtons() }
         updateButtons()
     }
 
     private fun updateButtons() {
-        val layer = layerProperty.value
+        val layer: Int = layerProperty.value
 
-        val color = when (layer) {
+        val color: Color = when (layer) {
             0 -> Color.web("e0e447")
             1 -> Color.web("a5e244")
             2 -> Color.web("56c7e3")
@@ -222,23 +246,47 @@ class MainController {
     }
 }
 
+private enum class ButtonState {
+    ACTIVE,
+    FADED,
+    BASE,
+    ;
+}
+
 private class ButtonGroup : HBox() {
-    val colorProperty = SimpleObjectProperty(Color.RED)
-    var color
+    val colorProperty: SimpleObjectProperty<Color> = SimpleObjectProperty(Color.RED)
+    var color: Color
         get() = colorProperty.get()
         set(value) = colorProperty.set(value)
+    val identifierProperty = SimpleObjectProperty<Int>(null)
+    var identifier: Int?
+        get() = identifierProperty.get()
+        set(value) = identifierProperty.set(value)
     val textProperty = SimpleStringProperty("")
-    var text
+    var text: String?
         get() = textProperty.get()
         set(value) = textProperty.set(value)
-    val textAlignmentProperty = SimpleObjectProperty(TextAlignment.RIGHT)
-    var textAlignment
+    val textAlignmentProperty: SimpleObjectProperty<TextAlignment> = SimpleObjectProperty(TextAlignment.RIGHT)
+    var textAlignment: TextAlignment
         get() = textAlignmentProperty.get()
         set(value) = textAlignmentProperty.set(value)
+    val stateProperty: SimpleObjectProperty<ButtonState> = SimpleObjectProperty(ButtonState.BASE)
+    var state: ButtonState
+        get() = stateProperty.get()
+        set(value) = stateProperty.set(value)
+
 
     init {
-        val circle = Circle(BUTTON_RADIUS)
-        circle.fillProperty().bind(colorProperty)
+        val circle = Circle(BUTTON_RADIUS).apply {
+            fillProperty().bind(Bindings.createObjectBinding({ if (state == ButtonState.FADED) Color.LIGHTGREY else color }, stateProperty, colorProperty))
+        }
+        val circleLabel = Label().apply {
+            textProperty().bind(identifierProperty.asString())
+            alignment = Pos.CENTER
+            isVisible = false
+        }
+        val circlePane = StackPane(circle, circleLabel)
+
         val label = Label().apply {
             effect = DropShadow().apply {
                 offsetX = 0.0
@@ -248,22 +296,21 @@ private class ButtonGroup : HBox() {
             }
             isCache = true
             font = Font.font("Consolas", FontWeight.BLACK, FontPosture.REGULAR, 16.0)
-            textFill = Color.WHITE
+            textFillProperty().bind(Bindings.createObjectBinding({ if (state == ButtonState.ACTIVE) color else Color.WHITE }, stateProperty, colorProperty))
+            textProperty().bind(textProperty)
+            textAlignmentProperty().bind(textAlignmentProperty)
         }
-        label.textProperty().bind(this.textProperty)
-        label.textAlignmentProperty().bind(textAlignmentProperty)
         spacing = 5.0
 
         textAlignmentProperty.addListener { _, _, newValue ->
-            children.clear()
             when (newValue) {
                 TextAlignment.LEFT -> {
-                    children.addAll(label, circle)
+                    children.setAll(label, circlePane)
                     alignment = Pos.CENTER_RIGHT
                 }
 
                 TextAlignment.RIGHT -> {
-                    children.addAll(circle, label)
+                    children.setAll(circlePane, label)
                     alignment = Pos.CENTER_LEFT
                 }
 

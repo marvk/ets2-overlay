@@ -1,0 +1,10 @@
+GET http://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v0001/?appid={{app}}&key={{key}}&steamid={{id}}
+Accept: application/json
+
+###
+GET http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={{key}}&steamid={{id}}&format=json
+Accept: application/json
+
+###
+GET http://api.steampowered.com/ISteamUserStats/GetUserStatsForGame/v0002/?appid={{app}}&key={{key}}&steamid={{id}}
+Accept: application/json

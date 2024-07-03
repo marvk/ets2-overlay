@@ -1,6 +1,8 @@
 package net.marvk.ets2overlay
 
+import javafx.beans.property.ReadOnlyBooleanProperty
 import javafx.beans.property.ReadOnlyBooleanWrapper
+import net.java.games.input.Component
 import net.java.games.input.ControllerEnvironment
 import net.java.games.input.Event
 import kotlin.time.Duration
@@ -12,8 +14,8 @@ class GamepadEventReader(private val deviceName: String, private val pollPeriod:
 
     private fun getPropertyInternal(id: Int) = buttonMap.getOrPut(id) { ReadOnlyBooleanWrapper(false) }
 
-    fun isButtonPressedProperty(id: Int) = getPropertyInternal(id).readOnlyProperty
-    fun isButtonPressed(id: Int) = isButtonPressedProperty(id).value
+    fun isButtonPressedProperty(id: Int): ReadOnlyBooleanProperty = getPropertyInternal(id).readOnlyProperty
+    fun isButtonPressed(id: Int): Boolean = isButtonPressedProperty(id).value
 
     fun start() {
         while (true) {
@@ -28,11 +30,12 @@ class GamepadEventReader(private val deviceName: String, private val pollPeriod:
 
                 while (queue.getNextEvent(event)) {
                     val component = event.component
-                    val value = event.value
                     val analog = component.isAnalog
-                    val identifier = component.identifier
 
                     if (!analog) {
+                        val value = event.value
+                        val identifier = component.identifier
+
                         identifier.name.toIntOrNull()?.also {
                             getPropertyInternal(it + 1).value = if (value > 0.5) true else false
                         }
